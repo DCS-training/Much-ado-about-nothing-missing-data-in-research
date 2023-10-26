@@ -10,7 +10,7 @@ output:
 
 <style type="text/css">
   body{
-  font-size: 16pt;
+  font-size: 14pt;
 }
 </style>
 
@@ -274,7 +274,7 @@ Better approaches will be examined next week. However, first we are going to div
 
 ## Dealing with missing data {.tabset .tabset-pills}
 
-Under all 3 conditions of missing data, we will be artificialy removing 30% of their data. This will be achieved using the `missMethods` package.  
+Under all 3 conditions of missing data, we will artificially remove 30% of their data. This will be achieved using the `missMethods` package.  
 
 The aim of this section of the workshop is to work through what I call "So what?". Here we will understand how the different choices to dealing with missing data interact with the types of missing data. We will work with each category of missing data, and with a set of missing data treatment options each time: deletion, mean-imputation, regression imputation, predictive mean matching multiple imputation. I know some of these names might be scary, and we will cover them. But the aim here is We will then visually analyse how each methods affects our data.
 
@@ -291,8 +291,8 @@ original_summary <- iris %>% tbl_summary( statistic = list(
 original_summary
 
 vis_complete <- ggplot(iris, aes(x = Petal.Width, y = Petal.Length)) +
-  geom_point(aes(color = Species))+
-  geom_smooth(method = "lm") + 
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Species), alpha = .7)+
   theme(legend.position = "bottom") +
   labs(title = "Complete original data - no missing values")
 
@@ -328,15 +328,13 @@ MCAR_summary <- MCAR_iris %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary), 
           tab_spanner = c("Original", "MCAR")) # using to compare summaries of original and missing data.
 
-ggplot(MCAR_iris, aes(x = Petal.Width, color = Petal.Length_NA)) +
-  geom_density()
 ```
 
 
 ```{r}
-vis_MCAR <- ggplot(MCAR_iris, aes(x = Petal.Width, y = Petal.Length)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
+vis_MCAR <- ggplot(MCAR_iris, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha = .7)+
   geom_miss_point() + # using grid_miss_point() from earlier to view difference
   theme(legend.position = "bottom") +
   labs(title = "MCAR missing values at Petal.Length")
@@ -377,10 +375,9 @@ MCAR_del_summary <- delete_MCAR %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MCAR_del_summary), 
           tab_spanner = c("Original", "MCAR", "MCAR deleted missing")) # using to compare summaries of original and missing data.
 
-vis_MCAR_delete <- ggplot(delete_MCAR, aes(x = Petal.Width, y = Petal.Length, color = )) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_MCAR_delete <- ggplot(delete_MCAR, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MCAR missing values at Petal.Length")
 
@@ -421,10 +418,9 @@ MCAR_mean_imp_summary <- mean_imp_MCAR %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MCAR_del_summary, MCAR_mean_imp_summary), 
           tab_spanner = c("Original", "MCAR", "MCAR deleted missing", "MCAR mean imputed")) # using to compare summaries of original and missing data.
 
-vis_mean_imp <- ggplot(mean_imp_MCAR, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_mean_imp <- ggplot(mean_imp_MCAR, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MCAR missing values at Petal.Length imputed via Mean")
 
@@ -463,10 +459,9 @@ MCAR_lm_imp_summary <- lm_imp_MCAR %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MCAR_del_summary, MCAR_mean_imp_summary, MCAR_lm_imp_summary), 
           tab_spanner = c("Original", "MCAR", "MCAR deleted missing", "MCAR mean imputed", "MCAR linear model imp")) # using to compare summaries of original and missing data.
 
-vis_lm_imp <- ggplot(lm_imp_MCAR, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_lm_imp <- ggplot(lm_imp_MCAR, aes(x = Petal.Width, y = Petal.Length)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha = .7)+
   theme(legend.position = "bottom") +
   labs(title = "MCAR missing values at Petal.Length imputed via linear model")
 
@@ -508,10 +503,9 @@ MCAR_pmm_imp_summary <- pmm_MCAR_complete %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MCAR_del_summary, MCAR_mean_imp_summary, MCAR_lm_imp_summary, MCAR_pmm_imp_summary), 
           tab_spanner = c("Original", "MCAR", "MCAR deleted missing", "MCAR mean imputed", "MCAR linear model imp", "MCAR pmm imputed")) # using to compare summaries of original and missing data.
 
-vis_pmm_imp <- ggplot(pmm_MCAR_complete, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_pmm_imp <- ggplot(pmm_MCAR_complete, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha = .7)+
   theme(legend.position = "bottom") +
   labs(title = "MCAR missing values at Petal.Length imputed via pmm")
 
@@ -552,9 +546,9 @@ MAR_summary <- MAR_iris %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MAR_summary), 
           tab_spanner = c("Original", "MCAR","MAR")) # using to compare summaries of original and missing data.
 
-vis_MAR <- ggplot(MAR_iris, aes(x = Petal.Width, y = Petal.Length)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
+vis_MAR <- ggplot(MAR_iris, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha =.7)+
   geom_miss_point() + # using grid_miss_point() from earlier to view difference
   theme(legend.position = "bottom") +
   labs(title = "MAR missing values at Petal.Length")
@@ -595,10 +589,9 @@ MAR_del_summary <- delete_MAR %>%
 tbl_merge(tbls = list(original_summary, MAR_summary, MAR_del_summary), 
           tab_spanner = c("Original", "MAR", "MAR deleted missing")) # using to compare summaries of original and missing data.
 
-vis_MAR_delete <- ggplot(delete_MAR, aes(x = Petal.Width, y = Petal.Length, color = )) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_MAR_delete <- ggplot(delete_MAR, aes(x = Petal.Width, y = Petal.Length )) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MAR missing values at Petal.Length")
 
@@ -639,10 +632,9 @@ MAR_mean_imp_summary <- mean_imp_MAR %>%
 tbl_merge(tbls = list(original_summary, MAR_summary, MAR_del_summary, MAR_mean_imp_summary), 
           tab_spanner = c("Original", "MAR", "MAR deleted missing", "MAR mean imputed")) # using to compare summaries of original and missing data.
 
-vis_mean_imp <- ggplot(mean_imp_MAR, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_mean_imp <- ggplot(mean_imp_MAR, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MAR missing values at Petal.Length imputed via Mean")
 
@@ -684,10 +676,9 @@ tbl_merge(tbls = list(original_summary, MAR_summary,
           tab_spanner = c("Original", "MAR", "MAR deleted missing", 
                           "MAR mean imputed", "MAR linear model imp")) # using to compare summaries of original and missing data.
 
-vis_lm_imp <- ggplot(lm_imp_MAR, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_lm_imp <- ggplot(lm_imp_MAR, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MAR missing values at Petal.Length imputed via linear model")
 
@@ -731,10 +722,9 @@ MAR_pmm_imp_summary <- pmm_MAR_complete %>%
 tbl_merge(tbls = list(original_summary, MAR_summary, MAR_del_summary, MAR_mean_imp_summary, MAR_lm_imp_summary, MAR_pmm_imp_summary), 
           tab_spanner = c("Original", "MAR", "MAR deleted missing", "MAR mean imputed", "MAR linear model imp", "MAR pmm imputed")) # using to compare summaries of original and missing data.
 
-vis_pmm_imp <- ggplot(pmm_MAR_complete, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_pmm_imp <- ggplot(pmm_MAR_complete, aes(x = Petal.Width, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MAR missing values at Petal.Length imputed via pmm")
 
@@ -766,7 +756,7 @@ To simulate MNAR data in the IRIS dataset, we will need to remove the `Petal.Wid
 ```{r, error = FALSE, warning = FALSE}
 iris_id <- iris %>% mutate(ID = row_number()) # Creating ID number - this will be useful for later!
 MNAR_iris <- iris_id %>% select(Petal.Length, Sepal.Length, ID) %>% # Choosing only Petal.Length + Sepal.Length - other variables "disapeered"
-  delete_MNAR_censoring( cols_mis = "Petal.Length",  p =.3) %>% bind_shadow()# here we have asked data to be missing in the `Petal.Length` variable, and for 30% of data to be missing in the MNAR condition. 
+  delete_MNAR_censoring( cols_mis = "Petal.Length",  p =.3, where = "both") %>% bind_shadow()# here we have asked data to be missing in the `Petal.Length` variable, and for 30% of data to be missing in the MNAR condition.  Setting `where` to both, so missing data present at both sides.
 
 MNAR_summary <- MNAR_iris %>% 
   dplyr::select(`Sepal.Length`,  `Petal.Length`) %>% # selecting to avoid summaries of shadow variables.
@@ -778,16 +768,45 @@ MNAR_summary <- MNAR_iris %>%
 tbl_merge(tbls = list(original_summary, MCAR_summary, MAR_summary, MNAR_summary), 
           tab_spanner = c("Original", "MCAR","MAR", "MNAR")) # using to compare summaries of original and missing data.
 
-vis_MNAR <- ggplot(MNAR_iris, aes(x = Sepal.Length, y = Petal.Length)) + # Using Sepal.Width  to examine here
-  geom_point()+
-  geom_smooth(method = "lm") +
+vis_MNAR <- ggplot(MNAR_iris, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) + # Using Sepal.Width  to examine here
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha = .7)+
   geom_miss_point() + # using grid_miss_point() from earlier to view difference
   theme(legend.position = "bottom") +
   labs(title = "MNAR missing values at Petal.Length")
 
-vis_MNAR
+# Re-setting comparison plots of MAR and MCAR to match data
+vis_MAR <- ggplot(MAR_iris, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha = .7)+
+  geom_miss_point() +
+  theme(legend.position = "bottom") +
+  labs(title = "MAR missing values at Petal.Length")
 
-grid.arrange(vis_MNAR,vis_MAR, vis_MCAR) # Using grid.arrange() to compare plots, lets see the difference between a MNAR data and MCAR data.
+vis_MCAR <- ggplot(MCAR_iris, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha = .7)+
+  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+  theme(legend.position = "bottom") +
+  labs(title = "MCAR missing values at Petal.Length")
+
+vis_complete <- ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) +
+    geom_smooth(method = "lm", color = "black", alpha = .5) + 
+  geom_point(aes(color = Species), alpha = .7)+
+  theme(legend.position = "bottom") +
+  labs(title = "Complete original data - no missing values") # Plot for comparison with original data.
+
+vis_MNAR
+vis_MAR
+vis_MCAR
+vis_complete
+
+model_complete <- lm(Petal.Length ~ Sepal.Length, iris)# New original to compare more accurately
+
+Original_model <- tbl_regression(model_complete) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
 
 model_MNAR <- lm(Petal.Length ~ Sepal.Length, MNAR_iris) # Establishing model
 
@@ -823,18 +842,15 @@ MNAR_del_summary <- delete_MNAR %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_del_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR deleted missing")) # using to compare summaries of original and missing data.
 
-vis_MNAR_delete <- ggplot(delete_MNAR, aes(x = Sepal.Length, y = Petal.Length, color = )) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_MNAR_delete <- ggplot(delete_MNAR, aes(x = Sepal.Length, y = Petal.Length)) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MNAR missing values at Petal.Length")
 
 grid.arrange(vis_MNAR_delete, vis_complete) # Using grid.arrange() to compare plots, lets see the difference between a full data, and MCAR data
 
 model_MNAR_del <- lm(Petal.Length ~ Sepal.Length, delete_MNAR) # Establishing model
-
-
 
 
 MNAR_del <- tbl_regression(model_MNAR_del) %>% 
@@ -867,19 +883,15 @@ MNAR_mean_imp_summary <- mean_imp_MNAR %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_del_summary, MNAR_mean_imp_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR deleted missing", "MNAR mean imputed")) # using to compare summaries of original and missing data.
 
-vis_mean_imp <- ggplot(mean_imp_MNAR, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_mean_imp <- ggplot(mean_imp_MNAR, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MNAR missing values at Petal.Length imputed via Mean")
 
 grid.arrange(vis_mean_imp, vis_complete) # Using grid.arrange() to compare plots, lets see the difference between a full data, and MCAR data
 
 model_MNAR_imp <- lm(Petal.Length ~ Sepal.Length, mean_imp_MNAR) # Establishing model
-
-
-
 
 MNAR_mean_imp <- tbl_regression(model_MNAR_imp) %>% 
   modify_column_unhide(column = std.error) %>% 
@@ -896,8 +908,8 @@ Mean imputation under MNAR is also horrific! Just look at that plot! And then un
 ### Linear regression imputation.
 
 ```{r}
-# Here we use the impute_lm() function to eimpute via regression
-lm_imp_MNAR <- MNAR_iris %>% impute_lm(Petal.Length ~ Sepal.Width)
+# Here we use the impute_lm() function to impute via regression
+lm_imp_MNAR <- MNAR_iris %>% impute_lm(Petal.Length ~ Sepal.Length)
 
 MNAR_lm_imp_summary <- lm_imp_MNAR %>% 
   dplyr::select(`Sepal.Length`,  `Petal.Length`) %>% # selecting to avoid summaries of shadow variables.
@@ -909,10 +921,9 @@ MNAR_lm_imp_summary <- lm_imp_MNAR %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_del_summary, MNAR_mean_imp_summary, MNAR_lm_imp_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR deleted missing", "MNAR mean imputed", "MNAR linear model imp")) # using to compare summaries of original and missing data.
 
-vis_lm_imp <- ggplot(lm_imp_MNAR, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_lm_imp <- ggplot(lm_imp_MNAR, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha =.7)+
   theme(legend.position = "bottom") +
   labs(title = "MNAR missing values at Petal.Length imputed via linear model")
 
@@ -954,10 +965,9 @@ MNAR_pmm_imp_summary <- pmm_MNAR_complete %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_del_summary, MNAR_mean_imp_summary, MNAR_lm_imp_summary, MNAR_pmm_imp_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR deleted missing", "MNAR mean imputed", "MNAR linear model imp", "MNAR pmm imputed")) # using to compare summaries of original and missing data.
 
-vis_pmm_imp <- ggplot(pmm_MNAR_complete, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_pmm_imp <- ggplot(pmm_MNAR_complete, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = Petal.Length_NA), alpha = .7)+
   theme(legend.position = "bottom") +
   labs(title = "MNAR missing values at Petal.Length imputed via pmm")
 
@@ -989,7 +999,7 @@ We are using the PMM method of imputing to compare for this example.
 ```{r, message= FALSE, warning= FALSE, results='hide'}
 petal_width_id <- iris %>% select(Petal.Width, Sepal.Width, Species) %>% mutate(ID = row_number()) 
 MNAR_rescue <- merge(MNAR_iris, petal_width_id, by = "ID")
-summary(MNAR_rescue)
+
 
 pmm_rescue <- mice(MNAR_rescue, method = "pmm", m =5, maxit = 5, seed = 123, print = FALSE)
 pmm_rescue_complete <- complete(pmm_rescue, 5) # Please note this is a simplified approach, and that best practice requires pool and testing against a model. However, as a demonstration it is still effective.
@@ -1006,29 +1016,39 @@ MNAR_rescue_imp_summary <- pmm_rescue_complete %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_pmm_imp_summary, MNAR_rescue_imp_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR pmm imputed", "MNAR rescue PMM")) # using to compare summaries of original and missing data.
 
-vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Sepal.Length, y = Petal.Length, color = Petal.Length_NA)) +
-  geom_point()+
-  geom_smooth(method = "lm") +
-  geom_miss_point() + # using grid_miss_point() from earlier to view difference
+vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_smooth(method = "lm", color = "black", alpha = .5) + 
+  geom_point(aes(color = Petal.Length_NA), alpha = .7)+
   theme(legend.position = "bottom") +
-  labs(title = "MNAR missing values with auxillary variatble (Petal.Width)", 
+  labs(title = "MNAR missing values with auxillary variables", 
        subtitle =  "Petal.Length imputed via pmm")
 
-grid.arrange(vis_rescue_imp, vis_pmm_imp) # Using grid.arrange() to compare plots, lets see the difference between a full data, and MCAR data
+vis_rescue_imp
+
+vis_complete
+
+vis_pmm_imp
 
 model_rescue_pmm_imp <- lm(Petal.Length ~ Sepal.Length, pmm_rescue_complete) # Establishing model
 
 
-model_complete <- lm(Petal.Length ~ Sepal.Length, iris) # New original to compare more accurately
+model_complete <- lm(Petal.Length ~ Sepal.Length, iris)# New original to compare more accurately
+
+original_data_model <- tbl_regression(model_complete) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
 
 MNAR_rescue_imp <- tbl_regression(model_rescue_pmm_imp) %>% 
   modify_column_unhide(column = std.error) %>% 
   add_glance_table(include = c(r.squared, adj.r.squared, 
                                statistic, df.residual, p.value))
 
-tbl_merge(tbls = list(Original_model, MNAR, MNAR_pmm_imp, MNAR_rescue_imp ),
+tbl_merge(tbls = list(original_data_model, MNAR, MNAR_pmm_imp, MNAR_rescue_imp ),
           tab_spanner = c("Original", "MNAR", "MNAR predictive mean matching imputation", "Rescued MNAR PMM")) 
 
 ```
+
+I hope this helps to highlight the importance of auxillary/additional data. It may also inspire discussions/debates/arguments with your ethics panel about defining the collection of "essential data only". To help, make sure in your research design that you can theoretically justify why your auxillary variables can be useful for mitigating missing data.  
 
 And that is the end of part 1! Apologies if that was all rather heavy
