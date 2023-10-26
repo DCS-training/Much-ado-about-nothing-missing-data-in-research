@@ -13,3 +13,7 @@ The material in this repo was developed and curated by Rhys Davies.
 * Missing data reading materials - for anyone who wants to geek out on missing data before/after the course.
 
 All material collected here is free to use but is covered by a License: [![License: CC BY-NC 4.0](https://licensebuttons.net/l/by-nc/4.0/80x15.png)](https://creativecommons.org/licenses/by-nc/4.0/) license
+
+Many of the materials and methods used in this session utilise and were inspired by the the naniar package, and the mice package. Further information on using these packages can be found here:
+https://naniar.njtierney.com/articles/getting-started-w-naniar.html
+https://stefvanbuuren.name/fimd/sec-stepwise.html
