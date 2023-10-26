@@ -995,7 +995,8 @@ vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Petal.Width, y = Petal.Len
   geom_smooth(method = "lm") +
   geom_miss_point() + # using grid_miss_point() from earlier to view difference
   theme(legend.position = "bottom") +
-  labs(title = "MNAR missing values at Petal.Length imputed via pmm")
+  labs(title = title = "MNAR missing values with auxillary variatble (Petal.Width)", 
+       subtitle =  "Petal.Length imputed via pmm")
 
 grid.arrange(vis_rescue_imp, vis_pmm_imp, vis_complete) # Using grid.arrange() to compare plots, lets see the difference between a full data, and MCAR data
 
