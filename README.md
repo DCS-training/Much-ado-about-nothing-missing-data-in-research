@@ -1,4 +1,4 @@
-# Much-ado-about-nothing-missing-data-in-research
+# Much Ado About Nothing: Missing Data in Research
 Hello Everyone! This is the Readme File for the Much ado about nothing course (delivered by the CDCS in November 2023).
 
 This workshop focused on how to explore, understand and address missing data in research, using R, R studio and some theory. We will also explore potential methods of deliberatley using missing data in our research.
