@@ -16,5 +16,6 @@ All material collected here is free to use but is covered by a License: [![Licen
 
 Many of the materials and methods used in this session utilise and were inspired by the the naniar package, and the mice package. Further information on using these packages can be found here:
 
-https://naniar.njtierney.com/articles/getting-started-w-naniar.html (visualising and understanding our missing data).
-https://stefvanbuuren.name/fimd/sec-stepwise.html (how to run MICE, and evaluating our imputations).
+* https://naniar.njtierney.com/articles/getting-started-w-naniar.html (visualising and understanding our missing data).
+
+* https://stefvanbuuren.name/fimd/sec-stepwise.html (how to run MICE, and evaluating our imputations).
