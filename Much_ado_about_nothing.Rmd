@@ -235,7 +235,7 @@ Ocean_shadow <- oceanbuoys %>% bind_shadow() %>% mutate(year = as.factor(year))
 
 # Step 2- logistic regression to test missing data hypothesis + data vis
 
- model_log<- glm(air_temp_c_NA ~ sea_temp_c * year, family="binomial", data = Ocean_shadow )
+ model_log<- glm(air_temp_c_NA ~ sea_temp_c , family="binomial", data = Ocean_shadow )
 
  summary(model_log)
 
@@ -990,7 +990,7 @@ MNAR_rescue_imp_summary <- pmm_rescue_complete %>%
 tbl_merge(tbls = list(original_summary, MNAR_summary, MNAR_pmm_imp_summary, MNAR_rescue_imp_summary), 
           tab_spanner = c("Original", "MNAR", "MNAR pmm imputed", "MNAR rescue PMM")) # using to compare summaries of original and missing data.
 
-vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Petal.Width, y = Petal.Length, color = Petal.Length_NA)) +
+vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Sepal.Width, y = Petal.Length, color = Petal.Length_NA)) +
   geom_point()+
   geom_smooth(method = "lm") +
   geom_miss_point() + # using grid_miss_point() from earlier to view difference
@@ -998,7 +998,7 @@ vis_rescue_imp <- ggplot(pmm_rescue_complete, aes(x = Petal.Width, y = Petal.Len
   labs(title = title = "MNAR missing values with auxillary variatble (Petal.Width)", 
        subtitle =  "Petal.Length imputed via pmm")
 
-grid.arrange(vis_rescue_imp, vis_pmm_imp, vis_complete) # Using grid.arrange() to compare plots, lets see the difference between a full data, and MCAR data
+grid.arrange(vis_rescue_imp, vis_pmm_imp) # Using grid.arrange() to compare plots, lets see the difference the auxillary MNAR impute vs no auxillary MNAR impute
 
 model_rescue_pmm_imp <- lm(Petal.Length ~ Petal.Width, pmm_rescue_complete) # Establishing model
 
