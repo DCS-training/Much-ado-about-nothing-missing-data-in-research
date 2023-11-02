@@ -23,6 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #install.packages(mice)
 #install.packages(missMethods)
 #install.packages(gridExtra)
+#install.packages(gtsummary)
 
 library(tidyverse) # For data manipulation and piping 
 library(gtsummary) # to present fancy tables
@@ -808,11 +809,24 @@ Original_model <- tbl_regression(model_complete) %>%
   add_glance_table(include = c(r.squared, adj.r.squared, 
                                statistic, df.residual, p.value))
 
-model_MNAR <- lm(Petal.Length ~ Sepal.Length, MNAR_iris) # Establishing model
+model_MNAR <- lm(Petal.Length ~ Sepal.Length, MNAR_iris) # Establishing model for MNAR
+
+model_MAR <- lm(Petal.Length ~ Sepal.Length, MAR_iris) # Model for MAR on Sepal Length
+
+model_MCAR <- lm(Petal.Length ~ Sepal.Length, MCAR_iris) # Model for MCAR on Sepal Length
 
 # This next bit of code uses the gtsummary functions. It's very cool in creating quick tables, and definetly worth exploring in your own time. But for today their purpose is to allow us to quickly compare regression outputs
 
 
+MCAR <- tbl_regression(model_MCAR) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
+
+MAR <- tbl_regression(model_MAR) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
 
 MNAR <- tbl_regression(model_MNAR) %>% 
   modify_column_unhide(column = std.error) %>% 

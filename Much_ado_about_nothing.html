@@ -1480,7 +1480,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Much Ado About Nothing</h1>
 <h4 class="author">Rhys Maredudd Davies</h4>
-<h4 class="date">26 October, 2023</h4>
+<h4 class="date">02 November, 2023</h4>
 
 </div>
 
@@ -13943,11 +13943,24 @@ Original_model &lt;- tbl_regression(model_complete) %&gt;%
   add_glance_table(include = c(r.squared, adj.r.squared, 
                                statistic, df.residual, p.value))
 
-model_MNAR &lt;- lm(Petal.Length ~ Sepal.Length, MNAR_iris) # Establishing model
+model_MNAR &lt;- lm(Petal.Length ~ Sepal.Length, MNAR_iris) # Establishing model for MNAR
+
+model_MAR &lt;- lm(Petal.Length ~ Sepal.Length, MAR_iris) # Model for MAR on Sepal Length
+
+model_MCAR &lt;- lm(Petal.Length ~ Sepal.Length, MCAR_iris) # Model for MCAR on Sepal Length
 
 # This next bit of code uses the gtsummary functions. It&#39;s very cool in creating quick tables, and definetly worth exploring in your own time. But for today their purpose is to allow us to quickly compare regression outputs
 
 
+MCAR &lt;- tbl_regression(model_MCAR) %&gt;% 
+  modify_column_unhide(column = std.error) %&gt;% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
+
+MAR &lt;- tbl_regression(model_MAR) %&gt;% 
+  modify_column_unhide(column = std.error) %&gt;% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
 
 MNAR &lt;- tbl_regression(model_MNAR) %&gt;% 
   modify_column_unhide(column = std.error) %&gt;% 
@@ -14388,14 +14401,14 @@ text-indent: 25px;
 <td headers="std.error_1" class="gt_row gt_center">0.086</td>
 <td headers="ci_1" class="gt_row gt_center">1.7, 2.0</td>
 <td headers="p.value_1" class="gt_row gt_center">&lt;0.001</td>
-<td headers="estimate_2" class="gt_row gt_center"></td>
-<td headers="std.error_2" class="gt_row gt_center"></td>
-<td headers="ci_2" class="gt_row gt_center"></td>
-<td headers="p.value_2" class="gt_row gt_center"></td>
-<td headers="estimate_3" class="gt_row gt_center"></td>
-<td headers="std.error_3" class="gt_row gt_center"></td>
-<td headers="ci_3" class="gt_row gt_center"></td>
-<td headers="p.value_3" class="gt_row gt_center"></td>
+<td headers="estimate_2" class="gt_row gt_center">1.8</td>
+<td headers="std.error_2" class="gt_row gt_center">0.092</td>
+<td headers="ci_2" class="gt_row gt_center">1.7, 2.0</td>
+<td headers="p.value_2" class="gt_row gt_center">&lt;0.001</td>
+<td headers="estimate_3" class="gt_row gt_center">1.3</td>
+<td headers="std.error_3" class="gt_row gt_center">0.088</td>
+<td headers="ci_3" class="gt_row gt_center">1.1, 1.4</td>
+<td headers="p.value_3" class="gt_row gt_center">&lt;0.001</td>
 <td headers="estimate_4" class="gt_row gt_center">1.8</td>
 <td headers="std.error_4" class="gt_row gt_center">0.138</td>
 <td headers="ci_4" class="gt_row gt_center">1.6, 2.1</td>
@@ -14405,11 +14418,11 @@ text-indent: 25px;
 <td headers="std.error_1" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="ci_1" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="p.value_1" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
-<td headers="estimate_2" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;">0.929</td>
+<td headers="estimate_2" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;">0.798</td>
 <td headers="std.error_2" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="ci_2" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="p.value_2" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
-<td headers="estimate_3" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;">0.764</td>
+<td headers="estimate_3" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;">0.666</td>
 <td headers="std.error_3" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="ci_3" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
 <td headers="p.value_3" class="gt_row gt_center" style="border-top-width: 2px; border-top-style: solid; border-top-color: #D3D3D3;"></td>
@@ -14422,11 +14435,11 @@ text-indent: 25px;
 <td headers="std.error_1" class="gt_row gt_center"></td>
 <td headers="ci_1" class="gt_row gt_center"></td>
 <td headers="p.value_1" class="gt_row gt_center"></td>
-<td headers="estimate_2" class="gt_row gt_center">0.928</td>
+<td headers="estimate_2" class="gt_row gt_center">0.796</td>
 <td headers="std.error_2" class="gt_row gt_center"></td>
 <td headers="ci_2" class="gt_row gt_center"></td>
 <td headers="p.value_2" class="gt_row gt_center"></td>
-<td headers="estimate_3" class="gt_row gt_center">0.762</td>
+<td headers="estimate_3" class="gt_row gt_center">0.663</td>
 <td headers="std.error_3" class="gt_row gt_center"></td>
 <td headers="ci_3" class="gt_row gt_center"></td>
 <td headers="p.value_3" class="gt_row gt_center"></td>
@@ -14439,11 +14452,11 @@ text-indent: 25px;
 <td headers="std.error_1" class="gt_row gt_center"></td>
 <td headers="ci_1" class="gt_row gt_center"></td>
 <td headers="p.value_1" class="gt_row gt_center"></td>
-<td headers="estimate_2" class="gt_row gt_center">1,346</td>
+<td headers="estimate_2" class="gt_row gt_center">407</td>
 <td headers="std.error_2" class="gt_row gt_center"></td>
 <td headers="ci_2" class="gt_row gt_center"></td>
 <td headers="p.value_2" class="gt_row gt_center"></td>
-<td headers="estimate_3" class="gt_row gt_center">334</td>
+<td headers="estimate_3" class="gt_row gt_center">205</td>
 <td headers="std.error_3" class="gt_row gt_center"></td>
 <td headers="ci_3" class="gt_row gt_center"></td>
 <td headers="p.value_3" class="gt_row gt_center"></td>
@@ -14482,23 +14495,6 @@ text-indent: 25px;
 <td headers="ci_3" class="gt_row gt_center"></td>
 <td headers="p.value_3" class="gt_row gt_center"></td>
 <td headers="estimate_4" class="gt_row gt_center">&lt;0.001</td>
-<td headers="std.error_4" class="gt_row gt_center"></td>
-<td headers="ci_4" class="gt_row gt_center"></td>
-<td headers="p.value_4" class="gt_row gt_center"></td></tr>
-    <tr><td headers="label" class="gt_row gt_left">Petal.Width</td>
-<td headers="estimate_1" class="gt_row gt_center"></td>
-<td headers="std.error_1" class="gt_row gt_center"></td>
-<td headers="ci_1" class="gt_row gt_center"></td>
-<td headers="p.value_1" class="gt_row gt_center"></td>
-<td headers="estimate_2" class="gt_row gt_center">2.2</td>
-<td headers="std.error_2" class="gt_row gt_center">0.060</td>
-<td headers="ci_2" class="gt_row gt_center">2.1, 2.3</td>
-<td headers="p.value_2" class="gt_row gt_center">&lt;0.001</td>
-<td headers="estimate_3" class="gt_row gt_center">1.9</td>
-<td headers="std.error_3" class="gt_row gt_center">0.104</td>
-<td headers="ci_3" class="gt_row gt_center">1.7, 2.1</td>
-<td headers="p.value_3" class="gt_row gt_center">&lt;0.001</td>
-<td headers="estimate_4" class="gt_row gt_center"></td>
 <td headers="std.error_4" class="gt_row gt_center"></td>
 <td headers="ci_4" class="gt_row gt_center"></td>
 <td headers="p.value_4" class="gt_row gt_center"></td></tr>
