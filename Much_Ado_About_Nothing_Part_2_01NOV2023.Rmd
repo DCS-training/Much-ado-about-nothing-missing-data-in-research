@@ -1,0 +1,821 @@
+---
+title: "Much Ado About Nothing"
+author: "Rhys Maredudd Davies"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+---
+
+<style type="text/css">
+  body{
+  font-size: 14pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+##  intal.pacakges() is commented out. Best to run these commands if you know the packages have not been previously installed.
+#install.packages(tidyverse)
+#install.packages(naniar)
+#install.packages(simputation)
+
+library(tidyverse) # For data manipulation and piping 
+library(gtsummary) # to present fancy tables
+library(naniar)    # Missing data visualisation, tools, and tests
+library(simputation) # Simple imputation tools
+library(mice)      # Multiple imputed chained equations - needed for one of best practice methods
+library(missMethods) # for artifically creating missing data for simulation/demonstration purposes
+library(gridExtra) # for viewing plots side by side
+
+```
+
+# Eeeeeeek! MICE!! (Multiple Imputed Chained Equations)
+
+Welcome back. Last week we focused on methods of identifying and understanding our missing data, as well as visualising the effects of various imputation strategies. We were also briefly introduced to one of the recommended approaches of imputing our missing data, through using multiple imputation strategies. 
+
+Now unfortunately, the examples of last week were only a rough version - quick and dirty to get the job done and to help us visualise different aspects of missing data and quickly dealing with it. Today we will be going through a MICE workflow in greater detail, so that we can apply it to best. We also demonstrate how we can edit and manipulate MICE so that it can accurately and effectively work with our data
+
+Disclaimer - this is going to involve some theory work again...
+
+For anyone who wants to read further about this method, and have access to a detailed workflow, then please check out this excellent e-book from Steffan Van Buuren (https://stefvanbuuren.name/fimd/workflow.html). 
+
+(I did use that workflow as a guide for today)
+
+Aims for today:
+*Learn to use MICE to impute missing data.
+  *Learn how to manipulate MICE so that it can identify the best imputation strategy for each column of our missing data.
+*Learn how to pool our multiple imputed data files.
+  *Learn how to use this pooled data for analysis.
+*Learn to visualise our pooled data so that we can evaluate it.
+
+Lets get going shall we?
+
+## Step 1 - Understanding our data
+
+This will be a quick but essential revisit of last week. Our aim here is to understand our missing data, so that we can determine where our missing data is, and what type of missing data is it. 
+
+The dataset we will be working with today is the `nhanes2` dataset from the `mice` package - This is a small data set which is used to examine how cholesterol, age and bmi influence hypertension. (We are working with `nhanes2` instead of `nhanes` as it contains missing data in both the numeric and categorical measures - this is to demonstrate that we can do both with mice!)
+
+```{r}
+?nhanes
+summary(nhanes2)
+str(nhanes2)
+
+# Transforming nhanes2 to faciliate mice
+
+nhanes3 <- nhanes2 %>% mutate(
+  hyp = as.factor(case_when(hyp == "no" ~ "0",
+                  hyp == "yes" ~ "1")))
+
+
+summary(nhanes3)
+```
+
+So in our summary we see that we have `9` NA in `bmi`, `8` NA in `hyp`, and `10` NA in `chl`. Now let us run our missing data summaries to get more details on how much is missing where in our data:
+
+```{r}
+## Summaries for missing data across data
+n_miss(nhanes3) # provides total number of missing datum's across data
+n_complete(nhanes3) # Provides total number of complete datum's across data
+pct_miss(nhanes3) # Provides the percentage of missing data - very useful for reporting.
+pct_complete(nhanes3) # Provides the percentage of complete data.
+
+## Summaries of missing data across variables and cases
+miss_var_summary(nhanes3) # A summary of n missing and % missing across each variables
+miss_var_table(nhanes3) # A generalised summary of n missing per variable, with associated %.
+miss_case_summary(nhanes3) # A case by case summary of n missing and % missing. Very useful for survey data if you need to remove participant who barely attempted completion.
+miss_case_table(nhanes3) # A generalised summary of n missing per case, with associated %
+
+```
+
+So to report - the `nhanes3` data had `27%` of it's entries missing. Across the variables, `chl` had `10` missing entries ( _40%_), `bmi` had `9` missing entries ( _36%_), `hyp` had `8` missing entries ( _32%_), and age had `0` missing entries. On a case wise summary, _52%_ had 0 missing entries, _16%_ had 1 missing entry, _4%_ had 2 missing entries, and _28%_ had 3 missing entries. 
+
+Now that we understand the descriptives of our missing data, it's time to identify the categorisation of the missing data. We will do this statistically, and visually.
+
+First off - the Little (1988) MCAR test to determine if data is MCAR (or potentially MNAR), or MAR (or also potentially MNAR...).
+
+```{r}
+mcar_test(nhanes3)
+
+```
+
+As the test cannot reject the null hypothesis, we can infer that the missing data does not have a predictive pattern, and therefore the Little (1988) MCAR test demonstrates the data cannot be MAR ( _Chisq_ (9) = 8.00, _p_ = .53). 
+
+Now to visually inspect to help us understand if the data is MCAR or MNAR.
+
+```{r}
+vis_miss(nhanes3)
+gg_miss_upset(nhanes3)
+
+```
+
+Just to be safe, we will check if the missing data is in any way associated with age.
+```{r}
+
+gg_miss_var(nhanes3)
+gg_miss_var(nhanes3, 
+            facet = age)
+
+gg_miss_case(nhanes3) 
+gg_miss_case(nhanes3, 
+            facet = age) 
+
+```
+
+The younger group appears to have a higher concentration of missing data, but it does not look to be substantially greater proportion wise. But to be safe, we can test with logistic regression and the `geom_shadow()` function.
+
+```{r}
+
+nhanes_shadow <- nhanes3 %>% bind_shadow() 
+
+model_bmi <- glm(bmi_NA ~ 0+ age, family="binomial", data = nhanes_shadow )
+
+summary(model_bmi) # No sig difference between age group and BMI missing data
+
+model_hyp <- glm(hyp_NA ~ 0+ age, family="binomial", data = nhanes_shadow )
+
+summary(model_hyp) # No sig difference between age group and hyp missing data
+
+model_chl <- glm(chl_NA ~ 0+ age, family="binomial", data = nhanes_shadow )
+
+summary(model_chl) # No sig difference between age group and chl missing data
+
+```
+
+We can now be more confident that missing data in bmi, hyp and chl is not determined by age grouping - and thus the results of the Little MCAR test are holding up. However we still need to examine our missing data against our other variables. 
+
+```{r}
+
+model_bmi <- glm(bmi_NA ~ hyp + chl, family="binomial", data = nhanes_shadow )
+
+summary(model_bmi) # No sig difference between hyp, chl and BMI missing data
+
+model_hyp <- glm(hyp_NA ~ bmi + chl, family="binomial", data = nhanes_shadow )
+
+summary(model_hyp) # No sig difference between bmi, chl and hyp missing data
+
+model_chl <- glm(chl_NA ~ bmi + hyp, family="binomial", data = nhanes_shadow )
+
+summary(model_chl) # No sig difference between bmi, hyp and chl missing data
+
+```
+
+
+## MICE imputation time 
+
+By now we can be confident that our data is indeed MCAR and not MNAR. And so we can apply our imputation with greater confidence. However, it is worth bearing in mind that the following steps are also appropriate for for MAR data. 
+
+Whilst there are many different workflows that can be applied, today we will be using a template recommended by Van Buuren (2018) in their Flexible Imputation of Missing Data book https://stefvanbuuren.name/fimd/workflow.html.
+
+If interested in comparing with other strategies: https://osf.io/mdw5r/download 
+
+There are three basic steps to multiple imputation (Allison, 2012):
+1) To generate several datasets, each with slightly different imputed values. This variation is created by introducing random variation into the process of imputing missing values. 
+2) Perform an analysis on each of the datasets.
+3) Combine the results from analysis into a single set of parameter estimates, standard errors, and test statistics.
+
+*When your data are MCAR or MAR*
+_*Pros to multiple imputation:*_
+* Regain data points and increase power
+* With MCAR, you do not need to include auxiliary variables in your model, which increases speed and decreases complexity.
+
+_*Cons to multiple imputation:*_
+* Potentially computationally- and time-demanding, so it may not be worth it if the sample size is large and the number of missing cases are low.
+
+*When your data are MNAR* (and you have no useful axillary variables to support you).
+* Multiple imputation can be conducted if you wish to retain power and minimize any MAR bias that exists in your dataset (remember that your MNAR may in reality by MAR or MCAR as you are lacking contextual information). 
+* However,be aware that you will still experience a loss of generalizability. You should therefore _discuss_ _why_ and _how_ your sample is _biased_ or _non-generalizable_ due to MNAR data.
+
+Lets start chasing mice.
+
+### Step 1 - mids (multiple imputed data-sets)
+
+First we need to create a multiple imputed dataset (classified as: _mids_). Here is where the bulk of the imputation is done. However, as the name suggests - we end up with multiple datasets. Think of this like _bootstrapping_, but for imputation. Each dataset will have some randomly generated variation, which we will make use of later. As such, we need to set a seed so that our research can be reproducable. In it's current format it cannot be used for our analyses. But for the next steps it is essential. For now we will run our mice just with the default pmm.
+
+```{r}
+
+imp <- mice(nhanes_shadow, seed = 123, print = FALSE, m = 10) # m reccomended at 100 (Hayes, 2022), but be warned - this is computationally intensive. For speediness today, we set m to 10. 
+# Notice also that we set the seed. This is to ensure reproducability.
+# Setting print = FALSE, mostly so we don't see the calculations. This is optional - but here it is set to FALSE so that I don't overwhelm you all with a long and mostly meaningless output.
+
+summary(imp) # We use summary to see imputation method was used for each variable. By default, mice uses pmm for continuous variables, and logreg (logistic regression) for categorical variables. 
+```
+### Step 2 - Visually assessing the imputed data
+
+Our first step is to quickly assess the imputed data across the multiple imputations (and see if anything weird is going on). To do so, we will use the `stripplot()` function from mice. 
+
+For reference: A strip plot is a single-axis scatter plot that is used to visualise the distribution of many individual one-dimensional values. The values are plotted as dots along one unique axis, and the dots with the same value can overlap. 
+
+```{r}
+?stripplot
+stripplot(imp, bmi~ .imp,
+          col = mdc(1:2),  # Select color - 1st num is observed, 2nd num is imputed
+          pch = c(21, 20), # Choose fill
+          cex = c(1, 1.5) # Choose size
+          ) 
+# blue = observed data.
+# red = imputed data.
+
+stripplot(imp, hyp~ .imp,
+          col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+stripplot(imp, chl~ .imp,
+          col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+```
+We can see nicely through the stripplots that the imputed value ranges never go beyond the range of our existing values. This is very useful in this scenario, but may not always be appropriate. 
+
+
+
+### Customising MICE
+
+We can also modify our mice algorhythm if needed to better specify our data. By default it uses predictive mean matching (pmm), as it is robust to both categorical and continuous data - and can be used with smaller samples. But for demonstrative purposes we'll highlight some of the control we have in this area. 
+
+We can also specify which variables we want to be used for the imputation. As a general rule of thumb, the more the merrier - especially to minimise MNAR conditions (Van Buuren, 2018). However, in some cases it may be useful to control as information may cause problematic covariance. In this case, we will remove the shadow `_NA` variables from the mice procedure. 
+
+For further details, please check out this useful resource: https://www.rdocumentation.org/packages/mice/versions/3.16.0/topics/mice 
+```{r}
+
+#step 1 - initiate mids file under 0 imputation
+imp2 <- mice(nhanes_shadow, maxit = 0, print = F ) 
+
+#step 2 - initiate and view predictor matrix
+pred <- imp2$pred
+pred
+
+```
+
+The object `pred` contains the predictor matrix from an initial run of mice with zero iterations. This is specified by setting `maxit = 0`. From here, altering the predictor matrix and returning it to the mice algorithm is very simple. For example, the following code removes the `..._NA` variables from the set of predictors, but still leaves it to be predicted by the other variables.
+
+```{r}
+
+pred[ ,  "bmi_NA"] <- 0
+pred
+
+pred[ ,  "hyp_NA"] <- 0
+pred
+
+pred[ ,  "chl_NA"] <- 0
+pred
+
+```
+
+This can now be used for imputing a new predictor matrix
+
+```{r}
+
+imp3 <- mice(nhanes_shadow, pred = pred, print = F)
+summary(imp3)
+
+```
+
+But what if we're working with a large dataset with many variables? Or if we want to only include variables with a minimum correlation effect size? For this, we can use the `quickpred()` function. In this instance, we will set mice to only impute across variables with a minimum correlation of _r_ = .2 . 
+
+```{r}
+?quickpred
+
+ini <- mice(nhanes_shadow, pred = quickpred(nhanes_shadow, mincor = .2), print = F)
+
+summary(ini)
+```
+
+
+```{r}
+#first step - removing _NA variables
+nhanes_new <- nhanes_shadow %>% select(!contains("_NA")) # using !contains to select all variables not with `_NA`
+summary(nhanes_new)
+
+imp4 <- mice(nhanes_new, m = 10 , maxit = 10,
+             meth = c("", "norm", "rf", "norm"), print = FALSE
+             )
+
+summary(imp4)
+
+# Updated list of methods available 
+methods(mice)
+
+```
+
+Lets compare the strip plots
+
+```{r}
+bmi_standard <- stripplot(imp3, bmi~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+bmi_mod <- stripplot(imp4, bmi~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+
+grid.arrange(bmi_standard, bmi_mod)
+
+
+hyp_standard <- stripplot(imp3, hyp~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+hyp_mod <- stripplot(imp4, hyp~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+
+grid.arrange(hyp_standard, hyp_mod)
+
+chl_standard <- stripplot(imp3, chl~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+chl_mod <- stripplot(imp4, chl~ .imp,
+           col = mdc(1:2),
+          pch = c(21, 20),
+          cex = c(1, 1.5))
+
+
+grid.arrange(chl_standard, chl_mod)
+```
+
+And now to compare convergence plots - here mice implements an iterative Markov Monte Carlo type of algorithm. We can use the trace lines to study the convergence:
+
+``` {r}
+
+ plot(imp3, title = "model convergence for default mice")
+
+ plot(imp4, title = "model convergence for customised mice")
+
+
+```
+The convergence plot shows the mean (left) and standard deviation (right) of the imputed values. In general, we are looking for the streams to intertwine, and to be free of trends at the later stages/iterations.
+
+
+### Step 2  Perform analysis on each dataset
+
+Thankfully with mice, this stage is much simpler than we might consider it to be. The tool is also versatile and can be applied to a variety of analysis methods. To showcase this, we will test 2 methods. One assuming our research question is interested in cholesterol, another assuming our research question is interested in determining whether a patient has hypertension or not.
+
+```{r}
+
+fit <- with(imp3, lm(chl ~ age + bmi + hyp))
+fit2 <- with(imp4, lm(chl ~ age + bmi + hyp))
+
+
+```
+
+### Step 3 - Combine the results
+
+Our final step is to combine and pool the results. Conceptually this gets a little weird, but practically it is simple. The key thing to note here is _averaging_ the values from previous steps is bad practice (Van Buurel, 2018). This is because it yields incorrect standard errors, confidence intervals and p-values. As a result, it should not be used if any form of statistical testing or uncertainty analysis is to be done on the imputed data. This is because averaging the datasets ignores the between-imputation variability. Doing so will provide all the drawbacks of single imputation. 
+
+So instead we _pool_ our data. This allows us to _average_ the *estimates* of the complete data model to compute the total variance through the repeated  analyses conducted above. This ensures that the analyses of the multiple imputation are done in accordance with Rubin's rules (Rubin 1987). (In other words - fancy stats talk for best recommended practice).
+
+```{r}
+est <- pool(fit)
+
+est
+
+summary(est)
+
+pool.r.squared(est)
+
+
+est2 <- pool(fit2)
+
+est2
+
+summary(est2)
+
+pool.r.squared(est2)
+
+
+```
+
+We can also inspect density plots to evaluate the imputation. If all goes well, the red and blue lines should be very closely associated.
+
+```{r}
+
+densityplot(imp3)
+densityplot(imp4)
+```
+
+### Step 4 - Evaluate imputation
+
+To evaluate our imputation there are several key steps:
+1. we need to study our stripplots - Make sure there are no imputation in inappropriate ranges.
+2. Inspect our *convergence plots* - There should be plenty of overlap, but with no set pattern at end (if problematic, you test to see if this can be fixed by increasing `m = ...` in mice).
+3. Inpect pooled analysis results (specifically the *lambda* and *fmi*). Generally speaking - the lower the better for these two measures.
+4. Check *density plots* - The two colours should be closely aligned.
+
+After considering these points, we can decide if we believe that interpreting the pooled regression coefficients are reliable and ready for reporting in our analysis.
+
+
+## What about item level imputation?
+
+One simple solution is the person mean/row mean imputation - but beware as this is only usable in conditions where under 10% of data is missing per case. I would also be consider cronbach alpha's when using this method - as it is done under the assumption of internal consistency. 
+https://www.sciencedirect.com/science/article/pii/S0895435613003879
+* person mean imputation will bias if over 10% is missing.
+
+An other solution is to use MICE again. The procedure is similar to previous steps, but we need to add an additional step to calculate the scale/subscale  total.
+
+For the following examples we will use a psychology dataset that investigates the relationship between stressful life events, social support and distress (via the DASS-21 measure, which is broken down into the subscales of stress, depression and anxiety). The dataset is borrowed from the MSc Psychology Conversion Course - Psychological Research Methods module. Much like the previous session, we will deliberately create MAR missing data in order to provide a suitable demonstration. This missing data will be across some of the DASS items, and will be conditional upon the group, eventsscore and SOsupport.
+
+### Simulating missing data and some metadata details
+
+```{r}
+
+life_events <- read_csv("~/CDCS/Much ado about nothing/Lifeevents.csv")
+life_events_1 <- life_events %>% mutate(group = as.factor(group))
+
+# group = intervention group. 1 = control group. 2 = mindfulness intervention.
+# eventsscore = count data. Lists number of stressful life events participant exposed to.
+# DASS stress subscale = dass1, dass6, dass8, dass11, dass12, dass14, dass18
+# DASS anxiety subscale = dass2, dass4, dass7, dass9, dass15, dass19, dass20
+# DASS depression subscale = dass3, dass5, dass10, dass16, dass17, dass21
+# SOsupport - significant other social support.
+# friendsupport - social support from friends.
+# famsupport - social support from family.
+
+MAR_lifeevents <- delete_MAR_censoring(life_events_1, cols_mis = c("dass3", "dass5", "dass10"),
+                                        cols_ctrl = c("eventsscore","SOsupport", "group" ),  .2)  # Creating missing data in depression subscale
+
+
+
+```
+
+Time to get compare the descriptive stats of the original and the missing data.
+
+```{r}
+#step 1 - calculate subscales
+original <- life_events_1 %>% 
+  mutate(Stress_subscale = dass1 + dass6+ dass8 + 
+           dass11 + dass12 + dass14 + dass18,
+         Anxiety_subcale = dass2 + dass4 + dass7 + dass9 +
+           dass15+ dass19+ dass20,
+         Depresion_subscale = dass3 + dass5 + dass10 + dass16 + dass17 + dass21)
+
+original_summary <- original %>% dplyr::select(`Stress_subscale`, `Anxiety_subcale`, `Depresion_subscale`, `SOsupport`, `group`, `eventsscore`) %>% # selecting to avoid summaries of shadow variables.
+  tbl_summary( statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"
+    ))
+
+# Checking cronbach alpha (just for depression for demonstration)
+original_alpha_depression <- original %>% select(dass3, dass5, dass10, dass16, dass17, dass21)
+ltm::cronbach.alpha(original_alpha_depression)
+
+
+MAR <- MAR_lifeevents %>% 
+  mutate(Stress_subscale = dass1 + dass6+ dass8 + 
+           dass11 + dass12 + dass14 + dass18,
+         Anxiety_subcale = dass2 + dass4 + dass7 + dass9 +
+           dass15+ dass19+ dass20,
+         Depresion_subscale = dass3 + dass5 + dass10 + dass16 + dass17 + dass21) %>% bind_shadow()
+
+MAR_summary <- original %>% dplyr::select(`Stress_subscale`, `Anxiety_subcale`, `Depresion_subscale`, `SOsupport`, `group`, `eventsscore`) %>% # selecting to avoid summaries of shadow variables.
+  tbl_summary( statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"
+    ))
+
+tbl_merge(tbls = list(original_summary, MAR_summary), 
+          tab_spanner = c("Original", "MAR"))
+
+alpha_depression <- MAR %>% select(dass3, dass5, dass10, dass16, dass17, dass21)
+#ltm::cronbach.alpha(alpha_depression) does not work due to missing data
+
+
+## Setting regression models to compare 
+
+model_original <- lm(Depresion_subscale ~ eventsscore + SOsupport, original )
+model_MAR <- lm(Depresion_subscale ~ eventsscore + SOsupport , MAR )
+
+Original_reg_summary <- tbl_regression(model_original) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
+
+MAR_reg_summary <- tbl_regression(model_MAR) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
+
+tbl_merge(tbls = list(Original_reg_summary, MAR_reg_summary),
+          tab_spanner = c("Original", "MAR")) 
+
+
+# Plots to compare
+
+original_plot <- ggplot(original, aes( 
+  y = Depresion_subscale,
+  x = SOsupport
+)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(alpha =.7)+
+  theme(legend.position = "bottom") +
+  labs(title = "Plot with original data")
+
+MAR_plot <- ggplot(MAR, aes( 
+  y = Depresion_subscale,
+  x = SOsupport
+)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_miss_point() +
+  theme(legend.position = "bottom") +
+  labs(title = "Plot with missing data")
+
+original_plot
+MAR_plot
+
+```
+
+### Person mean imputation code
+```{r}
+# Step 1 - selecting only variables in subscale
+Depression_data <- MAR_lifeevents  %>%  
+  select(dass3, dass5, dass10, dass16, dass17, dass21)
+
+
+#Step 2 - applying rowwise imputation to the selected data
+Depression_fix <- apply_imputation(Depression_data, FUN = mean, type = "rowwise")
+
+#Step 3 - updating dataset with imputed data
+MAR_rowwise_mean_imp <- MAR_lifeevents %>% mutate(
+  dass3 = Depression_fix$dass3,
+  dass5 = Depression_fix$dass5,
+  dass10 = Depression_fix$dass10,
+  dass16 = Depression_fix$dass16,
+  dass17 = Depression_fix$dass17,
+  dass21 = Depression_fix$dass21,
+  Stress_subscale = dass1 + dass6+ dass8 + dass11 + dass12 + dass14 + dass18,
+         Anxiety_subcale = dass2 + dass4 + dass7 + dass9 + dass15+ dass19+ dass20,
+         Depresion_subscale = dass3 + dass5 + dass10 + dass16 + dass17 + dass21
+) %>% bind_shadow()
+
+```
+
+### Comparing row wise imputation with previous data
+
+```{r}
+MAR_rowwise_summary <- MAR_rowwise_mean_imp %>% dplyr::select(`Stress_subscale`, `Anxiety_subcale`, `Depresion_subscale`, `SOsupport`, `group`, `eventsscore`) %>% # selecting to avoid summaries of shadow variables.
+  tbl_summary( statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} / {N} ({p}%)"
+    ))
+
+tbl_merge(tbls = list(original_summary, MAR_summary, MAR_rowwise_summary), 
+          tab_spanner = c("Original", "MAR", "Rowwise-imp"))
+
+# Comparing cronbach alphas
+alpha_depression <- MAR_rowwise_mean_imp %>% select(dass3, dass5, dass10, dass16, dass17, dass21)
+
+ltm::cronbach.alpha(alpha_depression)
+ltm::cronbach.alpha(original_alpha_depression)
+
+## Setting regression models to compare 
+
+
+model_rowwise_MAR <- lm(Depresion_subscale ~ eventsscore + SOsupport  , MAR_rowwise_mean_imp )
+
+
+MAR_rowise_imp_summary <- tbl_regression(model_rowwise_MAR) %>% 
+  modify_column_unhide(column = std.error) %>% 
+  add_glance_table(include = c(r.squared, adj.r.squared, 
+                               statistic, df.residual, p.value))
+
+tbl_merge(tbls = list(Original_reg_summary, MAR_reg_summary, MAR_rowise_imp_summary),
+          tab_spanner = c("Original", "MAR", "Rowwise-imp")) 
+
+#Comparing and inspecting plots
+
+MAR_rowwise_imp_plot <- ggplot(MAR_rowwise_mean_imp, aes( 
+  y = Depresion_subscale,
+  x = SOsupport
+)) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "black", alpha = .5) +
+  geom_point(aes(color = MAR$Depresion_subscale_NA)) +
+  theme(legend.position = "bottom") +
+  labs(title = "Plot with row-wise imputation")
+
+MAR_rowwise_imp_plot
+original_plot
+
+```
+
+## Item level imputation / Passive imputation with MICE
+
+Multi item level imputation through mice is possible, but it is difficult. It is even thought to be unpractical when working with datasets with many variables (as is often the case with psychometric data...). However, the method is reccomended when faced with large % of missing data.
+
+```{r}
+# This gets a little complicated...
+
+imp <-mice(MAR_lifeevents, 
+                  meth = c("", "logreg", "pmm",
+                  "rf", "rf", "rf", "rf", "rf", "rf", "rf", # Set to DASS 
+                  "rf", "rf", "rf", "rf", "rf", "rf", "rf", # rf (random forest) is effective for Likert items
+                  "rf", "rf", "rf", "rf", "rf", "rf", "rf",
+                  "pmm", "pmm", "pmm"), 
+            seed = 123, print = FALSE, pred = quickpred(MAR_lifeevents, mincor = .2), m =10)
+# From there, we get to follow the usual mice routine
+
+## Setting the model we want to test
+fit <- with(imp, lm(I(dass3 + dass5 + dass10 + dass16 + dass17 + dass21) ~ eventsscore + SOsupport ))
+
+## Pooling the results
+est <- pool.syn(fit)
+est
+
+## Viewing the results
+summary(est)
+pool.r.squared(est, adjusted = TRUE)
+
+## Evaluating the results
+summary(model_rowwise_MAR)
+summary(model_original)
+
+plot(imp)
+densityplot(imp)
+stripplot(imp, dass3 ~ .imp)
+stripplot(imp, dass5 ~ .imp)
+stripplot(imp, dass10 ~ .imp)
+
+```
+
+## Getting summary statistics from MICE.
+
+This is an area of mice which I find to be rather un-user friendly and unintuitive. But it is possible! Getting there just requires some tweaks of regression models by using no covariates (except the intercept). The `estimate` provides an estimation of the population mean, whilst the std.error is reported as well... unfortunatley we need to take some maths to convert from our standard error to out standard deviation. But the code is included here.
+
+```{r}
+
+depression_mean <- with(imp, lm(I(dass3 + dass5 + dass10 + dass16 + dass17 + dass21)~1))
+summary(pool(depression_mean))
+
+# formula for converting st.error to sd 
+## std.error * square.root of population size
+sd <- .884 * 6.325
+sd
+```
+
+And to compare with our original data and row wise imputation:
+
+```{r}
+summary(original$Depresion_subscale)
+sd(original$Depresion_subscale)
+summary(MAR_rowwise_mean_imp$Depresion_subscale)
+sd(MAR_rowwise_mean_imp$Depresion_subscale)
+
+```
+
+As for medians and quartile ranges, we need to use a quantile regression with our variable of choice - and no covariates. The quantile regression is performed using the `rq()` function from the `quantreg` package. 
+
+```{r}
+library(quantreg)
+#fit quantile regression to each imputed dataset
+depression_med <- with(imp, rq(I(dass3 + dass5 + dass10 + dass16 + dass17 + dass21)~1))
+
+```
+
+From here we are forced into more awkwardness, as the `pool` function of mice does not work with the `rq` function. Instead we have to manually collect the results across the imputed datasets and pool them manually so that we can conform with Rubin's rules.
+
+```{r}
+
+#extract estimates and variances
+
+## set m to match m in mice
+m <- 10
+
+ests <- array(0, dim=m)
+vars <- array(0, dim=m)
+for (i in 1:m) {
+  ests[i] <- summary.rq(depression_med$analyses[[i]],covariance=TRUE)$coefficients[1,1]
+  vars[i] <- summary.rq(depression_med$analyses[[i]],covariance=TRUE)$coefficients[1,2]^2
+}
+#now apply Rubin's rules using pool.scalar
+med_rubin <- pool.scalar(Q=ests, U=vars, n=dim(MAR_lifeevents[1]))
+
+```
+
+From here we can extract our median and standard error again:
+
+```{r}
+
+#median point estimate
+med_rubin$qbar
+#median standard error
+med_rubin$t^0.5
+
+
+```
+
+And to compare with our original data and row wise imputation:
+
+```{r}
+summary(original$Depresion_subscale)
+summary(MAR_rowwise_mean_imp$Depresion_subscale)
+
+```
+
+### Cronbach Alpha and Mice
+
+But what about checking to see how our cronbach alpha values are behaving under mice? This is more complicated, uses the `pool.scalar()` function, and requires some heavy coding (...and some help from the internet).
+
+https://stackoverflow.com/questions/70816175/how-do-i-calculate-cronbachs-alpha-on-multiply-imputed-data 
+
+
+```{r}
+
+# Step 2 - extract completed data in long format
+implong <- complete(imp, 'long')
+
+implong_subscale <- implong %>% select(.imp, dass3, dass5, dass10, dass16, dass17, dass21) # make sure to include ".imp", as it is needed for functions below to work. Also, add the subscales items you wish to calculate alpha for here.
+
+
+#Step 2 - create cronbach alpha function for pooled data
+
+cronbach_fun <- function(list_compl_data, boot = TRUE, B = 1e4, ci = FALSE) {
+  n <- nrow(list_compl_data); p <- ncol(list_compl_data)
+  total_variance <- var(rowSums(list_compl_data))
+  item_variance <- sum(apply(list_compl_data, 2, sd)^2)
+  alpha <- (p/(p - 1)) * (1 - (item_variance/total_variance))
+  out <- list(alpha = alpha)
+  boot_alpha <- numeric(B)
+  if (boot) {
+    for (i in seq_len(B)) {
+      boot_dat <- list_compl_data[sample(seq_len(n), replace = TRUE), ]
+      total_variance <- var(rowSums(boot_dat))
+      item_variance <- sum(apply(boot_dat, 2, sd)^2)
+      boot_alpha[i] <- (p/(p - 1)) * (1 - (item_variance/total_variance))
+    }
+    out$var <- var(boot_alpha)
+  }
+  if (ci){
+    out$ci <- quantile(boot_alpha, c(.025,.975))
+  }
+  return(out)
+}
+
+
+```
+
+The created `cronbach_fun()` has been designed to take on the following arguments:
+
+The function cronbach_fun() takes the following arguments:
+
+* list_compl_data: a character string specifying the list of completed data from a mids object.
+* boot: a logical indicating whether a non-parametrical bootstrap should be conducted.
+* B: an integer specifying the number of bootstrap samples to be taken.
+* ci: a logical indicating whether a confidence interval around alpha should be estimated.
+
+From here, its time to pool our estimates of the cronbach, using some more coding, and the `pool.scalar()` function used to ensure we do not violate the Rubin's rules. 
+
+
+```{r}
+m <- length(unique(implong_subscale$.imp)) # Set dataset inside `(unique(...)) to the dataset used for calculating cronbach alpha
+
+boot_alpha <- rep(list(NA), m) 
+for (i in seq_len(m)) { 
+  set.seed(i) # fix random number generator
+  sub <- implong_subscale[implong_subscale$.imp == i, -c(1,2)]
+  boot_alpha[[i]] <- cronbach_fun(sub)
+}
+
+# obtain Q and U (see ?pool.scalar)
+Q <- sapply(boot_alpha, function(x) x$alpha)
+U <- sapply(boot_alpha, function(x) x$var)
+
+
+# pooled estimates
+pool_estimates <- function(x) {
+  out <- c(
+    alpha = x$qbar,
+    lwr = x$qbar - qt(0.975, x$df) * sqrt(x$t),
+    upr = x$qbar + qt(0.975, x$df) * sqrt(x$t)
+  )
+  return(out)
+}
+
+# Pooled estimate of alpha (95% CI)
+ pool_estimates(pool.scalar(Q, U ))
+
+
+```
+
+To compare this with the original of the row mean imputation method of Cronbach's Alpha:
+
+```{r}
+
+ltm::cronbach.alpha(original_alpha_depression)
+ltm::cronbach.alpha(alpha_depression)
+
+```
+
+
+## References 
+
+Rubin, D.B. (1987). Multiple Imputation for Nonresponse in Surveys. New York: John Wiley and Sons.
