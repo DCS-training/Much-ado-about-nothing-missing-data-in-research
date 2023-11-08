@@ -457,7 +457,7 @@ For the following examples we will use a psychology dataset that investigates th
 
 ```{r}
 
-life_events <- read_csv("https://github.com/DCS-training/Much-ado-about-nothing-missing-data-in-research/blob/main/Lifeevents.csv")
+life_events <- read_csv("https://raw.githubusercontent.com/DCS-training/Much-ado-about-nothing-missing-data-in-research/main/Lifeevents.csv")
 life_events_1 <- life_events %>% mutate(group = as.factor(group))
 
 # group = intervention group. 1 = control group. 2 = mindfulness intervention.
