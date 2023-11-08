@@ -290,8 +290,10 @@ summary(ini)
 nhanes_new <- nhanes_shadow %>% select(!contains("_NA")) # using !contains to select all variables not with `_NA`
 summary(nhanes_new)
 
-imp4 <- mice(nhanes_new, m = 10 , maxit = 10,
-             meth = c("", "norm", "rf", "norm"), print = FALSE
+imp4 <- mice(nhanes_new, m = 10 , maxit = 10, 
+             pred = quickpred(nhanes_new, mincor = .2),
+             meth = c("", "norm", "rf", "norm"), 
+             print = FALSE
              )
 
 summary(imp4)
@@ -394,6 +396,31 @@ summary(est2)
 
 pool.r.squared(est2)
 
+```
+
+### Calculating Means and SD
+
+```{r}
+
+imp3 %>% mice::complete("long") %>%
+  select(bmi, chl ) %>%
+  summarise_all(list(~mean(.), ~sd(.)))
+
+imp4 %>% mice::complete("long") %>%
+  select(bmi, chl ) %>%
+  summarise_all(list(~mean(.), ~sd(.)))
+
+#Grouped summary (by Age)
+imp3 %>% mice::complete("long") %>%
+  select(age, bmi, chl ) %>%
+  group_by(age) %>%
+  summarise_all(list(~mean(.), ~sd(.)))
+
+
+imp4 %>% mice::complete("long") %>%
+  select(age, bmi, chl ) %>%
+  group_by(age) %>%
+  summarise_all(list(~mean(.), ~sd(.)))
 
 ```
 
@@ -615,25 +642,50 @@ Multi item level imputation through mice is possible, but it is difficult. It is
 ```{r}
 # This gets a little complicated...
 
+
+# meth = c("", "logreg", "pmm",
+#                   "rf", "rf", "rf", "rf", "rf", "rf", "rf", # Set to DASS 
+#                   "rf", "rf", "rf", "rf", "rf", "rf", "rf", # rf (random forest) is effective for Likert items
+#                   "rf", "rf", "rf", "rf", "rf", "rf", "rf",
+#                   "pmm", "pmm", "pmm"), 
+
 imp <-mice(MAR_lifeevents, 
                   meth = c("", "logreg", "pmm",
                   "rf", "rf", "rf", "rf", "rf", "rf", "rf", # Set to DASS 
                   "rf", "rf", "rf", "rf", "rf", "rf", "rf", # rf (random forest) is effective for Likert items
                   "rf", "rf", "rf", "rf", "rf", "rf", "rf",
                   "pmm", "pmm", "pmm"), 
-            seed = 123, print = FALSE, pred = quickpred(MAR_lifeevents, mincor = .2), m =10)
+            seed = 123, print = FALSE, pred = quickpred(MAR_lifeevents, mincor = .6), m =10)
 # From there, we get to follow the usual mice routine
+
 
 ## Setting the model we want to test
 fit <- with(imp, lm(I(dass3 + dass5 + dass10 + dass16 + dass17 + dass21) ~ eventsscore + SOsupport ))
+
+## Second method - here we can use tidyverse wranging strategies
+
+imp_m <- imp %>% 
+  mice::complete("long", include = TRUE) %>%
+  mutate(Depression_subscale = (dass3 + dass5 + dass10 + dass16 + dass17 + dass21)) # any additional data wrangling can be performed here if needed
+
+imp_mids <- as.mids(imp_m) # After data wrangling, the data needs to be converted to `mids` format so that it can be pooled correctly.
+
+fit2 <- with(imp_mids, lm(Depression_subscale ~ eventsscore + SOsupport))
+
 
 ## Pooling the results
 est <- pool.syn(fit)
 est
 
+est2 <- pool.syn(fit2)
+est2
+
 ## Viewing the results
 summary(est)
 pool.r.squared(est, adjusted = TRUE)
+
+summary(est2)
+pool.r.squared(est2, adjusted = TRUE)
 
 ## Evaluating the results
 summary(model_rowwise_MAR)
@@ -658,8 +710,20 @@ summary(pool(depression_mean))
 
 # formula for converting st.error to sd 
 ## std.error * square.root of population size
-sd <- .884 * 6.325
+sd <- .882 * 6.325
 sd
+```
+
+```{r}
+
+imp %>% mice::complete("long") %>%
+  select(dass3, dass5 , dass10 , dass16 , dass17 , dass21, eventsscore,  SOsupport) %>%
+  mutate(Depression_subscale = (dass3 + dass5 + dass10 + dass16 + dass17 + dass21)) %>% 
+  select(Depression_subscale, eventsscore,  SOsupport) %>%
+  summarise_all(list(~mean(.), ~sd(.), ~median(.)))
+
+
+
 ```
 
 And to compare with our original data and row wise imputation:
