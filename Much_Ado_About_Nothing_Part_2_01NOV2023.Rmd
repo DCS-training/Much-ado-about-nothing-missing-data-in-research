@@ -44,15 +44,20 @@ For anyone who wants to read further about this method, and have access to a det
 (I did use that workflow as a guide for today)
 
 Aims for today:
-*Learn to use MICE to impute missing data.
-  *Learn how to manipulate MICE so that it can identify the best imputation strategy for each column of our missing data.
-*Learn how to pool our multiple imputed data files.
-  *Learn how to use this pooled data for analysis.
-*Learn to visualise our pooled data so that we can evaluate it.
+
+* Learn to use MICE to impute missing data.
+
+  * Learn how to manipulate MICE so that it can identify the best imputation strategy for each column of our missing data.
+  
+* Learn how to pool our multiple imputed data files.
+
+  * Learn how to use this pooled data for analysis.
+  
+* Learn to visualise our pooled data so that we can evaluate it.
 
 Lets get going shall we?
 
-## Step 1 - Understanding our data
+##  Understanding our data
 
 This will be a quick but essential revisit of last week. Our aim here is to understand our missing data, so that we can determine where our missing data is, and what type of missing data is it. 
 
@@ -172,8 +177,11 @@ Whilst there are many different workflows that can be applied, today we will be 
 If interested in comparing with other strategies: https://osf.io/mdw5r/download 
 
 There are three basic steps to multiple imputation (Allison, 2012):
+
 1) To generate several datasets, each with slightly different imputed values. This variation is created by introducing random variation into the process of imputing missing values. 
+
 2) Perform an analysis on each of the datasets.
+
 3) Combine the results from analysis into a single set of parameter estimates, standard errors, and test statistics.
 
 *When your data are MCAR or MAR*
@@ -879,7 +887,31 @@ ltm::cronbach.alpha(alpha_depression)
 
 ```
 
+## Bonus Section 
 
+Disclaimer - In the creation of the materials of this workshop, I have come to appreciate that whilst MICE is incredibly powerful, it is also incredibly complicated, and requires many technical decisions. Meanwhile, FIML appears to be comparable in its ability to perform imputation. Thus, I have included a quick demo. 
+
+### FIML 
+
+
+Here is a quick demo of how we might use FIML for psychometric regression based analyses. We specify `missing = "fiml"` which then uses fiml to account for the missing data. In addition, we include: `fixed.x = F`. FIML works by estimating the relationships of the variables with each other and requires estimating the means and variances of the variables. If `fixed.x = T` (the default), then the variances and covariances are fixed and are based on the existing sample values and are not estimated. 
+
+```{r}
+library(lavaan)
+
+nomiss <- sem('Depresion_subscale ~ eventsscore + SOsupport', data = original)
+
+summary(nomiss)
+
+mod_meas <- '
+Dep =~ dass3 + dass5 + dass10 + dass16 + dass17 + dass21
+Dep ~ eventsscore + SOsupport
+'
+
+wmiss <- sem(mod_meas, data = MAR, missing = 'fiml', fixed.x = F)
+
+summary(wmiss)
+```
 ## References 
 
 Rubin, D.B. (1987). Multiple Imputation for Nonresponse in Surveys. New York: John Wiley and Sons.
