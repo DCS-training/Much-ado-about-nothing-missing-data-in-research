@@ -24,13 +24,13 @@ Many of the materials and methods used in this session utilise and were inspired
 
 Below are the steps to do so and get set. 
 
-## On Noteable
+### On Noteable
 
 1. Go to https://noteable.edina.ac.uk/login
 2. Login with your EASE credentials
 3. Select RStudio as a personal notebook server and press start
 4. Go to File >New Project>Version Control>Git
-5. Copy and Paste this repository URL https://github.com/DCS-training/PCA-2023 as the Repository URL
+5. Copy and Paste this repository URL https://github.com/DCS-training/Much-ado-about-nothing-missing-data-in-research as the Repository URL
 6. The Project directory name will filled in automatically but you can change it if you want your folder in Notable to have a different name
 7. Decide where to locate the folder. By default, it will locate it in your home directory 
 8. Press Create Project
@@ -40,9 +40,7 @@ Congratulations you have now pulled the content of the repository on your Notabl
 1. Open the 'Install.R' file and run the code within it 
 2. Now you can open the 'PCA.R' file and you can follow along
 
-## On your own machine
-
-### R and RStudio
+### On your own machine
 
 * R and RStudio are separate downloads and installations. R is the
 underlying statistical computing environment, but using R alone is no
